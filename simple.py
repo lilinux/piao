@@ -1,5 +1,9 @@
-from piao.api import *
+#!/usr/bin/env python
 #-*-coding: utf-8 -*-
+
+from piao.api import *
+import piao.policy
+piao.policy.passcode_tool = 'tools/passwin_ui.py'
 
 def main():
     username = 'user'

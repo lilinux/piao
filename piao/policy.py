@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 #-*-coding: utf-8 -*-
+import os
+import sys
+import threading
 from piao.config import DATA_DIR
+from piao.init import logger
 from piao.errors import NoSuchTrain, NoSuchSeat, TicketSoldOut
 
 SEAT_MAP = {
@@ -53,19 +57,52 @@ def select_specific_ticket(tickets, train, seat, num=1):
         raise TicketSoldOut()
     if left.isdigit():
         left_num = int(left)
+        logger.info('letf tickets: [%d]', left_num)
         if left_num < num:
             raise TicketSoldOut('not enough')
     return ticket
 
 
-def recognize_passcode(data):
-    open(DATA_DIR + '/passcode.png', 'wb').write(data)
-    # TODO(lilinux): popup image and wait for passcode ?
-    # XXX: only support macos with poor experience
-    import os
-    os.system('afplay %s/message.wav&' % DATA_DIR)
-    os.system('open %s/passcode.png' % DATA_DIR)
+def play_wav(wav):
+    import pyaudio
+    import wave
+    wave_file = wave.open(wav, 'rb')
+    audio = pyaudio.PyAudio()
+    stream = audio.open(format=audio.get_format_from_width(
+                        wave_file.getsampwidth()),
+                        channels=wave_file.getnchannels(),
+                        rate=wave_file.getframerate(),
+                        output=True)
+    stream.write(wave_file.readframes(wave_file.getnframes()))
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+
+
+def notify_passcode():
+    wav = '%s/message.wav' % DATA_DIR
     try:
-        return raw_input('please validate: ')
-    except EOFError:
-        return ''
+        threading.Thread(target=play_wav, args=(wav,)).start()
+        return
+    except ImportError:
+        pass
+    if sys.platform == 'darwin':
+        os.system('afplay %s&' % wav)
+    elif sys.platform == 'linux':
+        os.system('mplayer %s&' % wav)
+    else:
+        os.system('rundll32 amovie.ocx,RunDll /play /close %s' % wav)
+
+
+passcode_tool = None
+def recognize_passcode(data):
+    png = DATA_DIR + '/passcode.png'
+    open(png, 'wb').write(data)
+    notify_passcode()
+    if passcode_tool:
+        return os.popen('%s %s' % (passcode_tool, png)).read().strip()
+    else:
+        try:
+            return raw_input('please validate: ')
+        except EOFError:
+            return ''
