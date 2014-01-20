@@ -37,3 +37,4 @@ nosetests.xml
 test*.py
 cache
 .DS_Store
+.idea

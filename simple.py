@@ -2,7 +2,9 @@
 #-*-coding: utf-8 -*-
 
 from piao.api import *
+import piao.init
 import piao.policy
+#piao.policy.passcode_tool = None  # if no Tkinter or PIL library
 piao.policy.passcode_tool = 'tools/passwin_ui.py'
 
 def main():
@@ -16,6 +18,7 @@ def main():
     train = 'K88'
     detail = '0'
 
+    piao.init.add_proxy(None)  # add proxy like "proxy.xxoo.com:8080"
     orders = query_incomplete_order_with_login(username, password)
     if orders:
         print '有未完成订单，车次为[%s]' % ','.join(orders)

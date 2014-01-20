@@ -35,3 +35,11 @@ _fh.setFormatter(_formatter)
 logger.addHandler(_sh)
 logger.addHandler(_fh)
 logger.setLevel(logging.DEBUG)
+
+
+def add_proxy(proxy):
+    if not proxy:
+        return
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie),
+                                  urllib2.ProxyHandler({'http': proxy}))
+    urllib2.install_opener(opener)

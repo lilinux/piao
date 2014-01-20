@@ -7,6 +7,14 @@ from piao.config import DATA_DIR
 from piao.init import logger
 from piao.errors import NoSuchTrain, NoSuchSeat, TicketSoldOut
 
+try:
+    import pyaudio
+    import wave
+
+    notify_flag = 1
+except ImportError:
+    notify_flag = 0
+
 SEAT_MAP = {
     '商务座': 'swz',
     '特等座': 'tz',
@@ -50,6 +58,8 @@ def select_specific_ticket(tickets, train, seat, num=1):
         ticket = next((ticket for ticket in tickets if ticket.station_train_code == train))
     except StopIteration:
         raise NoSuchTrain('train[%s]' % train)
+    logger.info('train info [%s]',
+                '\n'.join(['%s=%s' % (i, getattr(ticket, i)) for i in dir(ticket) if not i.startswith('_')]))
     if not ticket.secretStr or ticket.canWebBuy != 'Y':
         raise TicketSoldOut()
     left = getattr(ticket, seat_str)
@@ -64,8 +74,6 @@ def select_specific_ticket(tickets, train, seat, num=1):
 
 
 def play_wav(wav):
-    import pyaudio
-    import wave
     wave_file = wave.open(wav, 'rb')
     audio = pyaudio.PyAudio()
     stream = audio.open(format=audio.get_format_from_width(
@@ -80,18 +88,17 @@ def play_wav(wav):
 
 
 def notify_passcode():
-    wav = '%s/message.wav' % DATA_DIR
-    try:
+    wav = '%s%smessage.wav' % (DATA_DIR, os.path.sep)
+    if notify_flag == 1:
         threading.Thread(target=play_wav, args=(wav,)).start()
         return
-    except ImportError:
-        pass
-    if sys.platform == 'darwin':
-        os.system('afplay %s&' % wav)
-    elif sys.platform == 'linux':
-        os.system('mplayer %s&' % wav)
     else:
-        os.system('rundll32 amovie.ocx,RunDll /play /close %s' % wav)
+        if sys.platform == 'darwin':
+            os.system('afplay %s&' % wav)
+        elif sys.platform == 'linux':
+            os.system('mplayer %s&' % wav)  # TODO: aplay?
+        else:
+            os.system('cmd /c %s' % wav)
 
 
 passcode_tool = None
@@ -100,7 +107,9 @@ def recognize_passcode(data):
     open(png, 'wb').write(data)
     notify_passcode()
     if passcode_tool:
-        return os.popen('%s %s' % (passcode_tool, png)).read().strip()
+        sep = os.path.sep
+        tool = passcode_tool.replace('/', sep)
+        return os.popen('%s %s' % (tool, png)).read().strip()
     else:
         try:
             return raw_input('please validate: ')

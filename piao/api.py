@@ -45,7 +45,10 @@ class Resource(object):
         timeout = timeout if timeout else self.timeout
         logger.debug('SEND: %s, %s', self.req.get_full_url(),
                      self.req.get_data())
-        return urllib2.urlopen(self.req, timeout=timeout)
+        stime = time.time()
+        rsp = urllib2.urlopen(self.req, timeout=timeout)
+        logger.debug('[%s] waste time [%f]' % (type(self), time.time() - stime))
+        return rsp
 
     def check_data(self, data):
         pass
@@ -53,7 +56,7 @@ class Resource(object):
     def process(self):
         rsp = self.send()
         data = rsp.read()
-        logger.debug('RECV: %s', data)
+        #logger.debug('RECV: %s', data)
         return self.check_data(data)
 
 
@@ -88,8 +91,6 @@ class AudioResource(Resource):
         rsp = self.send()
         data = rsp.read()
         open(wav_file, 'wb').write(data)
-
-AudioResource().process()
 
 
 class NoCompleteInitResource(Resource):
@@ -355,7 +356,6 @@ def validate_passcode(module, rand, **kwargs):
 
 
 def build_passenger_str(passengers):
-    #XXX(lilinux): 动车座位生成还有问题
     def _build_str1(p):
         phone = p.__dict__.get('mobile_no') or p.__dict__.get('phone_no') or ''
         return ','.join((p.seat_type, p.seat_detail, p.ticket_type, p.passenger_name, p.card_type, p.passenger_id_no, phone)) + ',N'
@@ -370,6 +370,7 @@ def build_passenger_str(passengers):
 
 def login(username, passwd, validate_retry=100):
     # 1. 进入登录页面
+    AudioResource().process()
     init_res = InitResource()
     init_res.process()
 
